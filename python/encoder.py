@@ -14,7 +14,6 @@ class Encoder(object):
 
     def __init__(self, embedding_sizes, vocab_sizes, embeddings, pads):
         """
-
         :param embedding_sizes: {"feat name": embed_size, ...}
         :param vocab_sizes: {"feat name": vocab_size, ...}
         :param pads: {"feat name": pad (0/V/..)}
@@ -31,7 +30,7 @@ class Encoder(object):
         an operation that concatenates all the embedded vectors after dropout
 
         :param embed_inputs: {"feat name":tf.placeholder(x1)], should be of type tf.int32
-        :param dropouts: {"feat name": tf.placeholder(float), ..]
+        :param dropouts: {"feat name": tf.placeholder(float), ..}
         :return: tf node
         """
         raise NotImplementedError("Abstract method")
@@ -39,9 +38,23 @@ class Encoder(object):
 
 class AvgWord2Vec(Encoder):
     def __init__(self, embedding_sizes, vocab_sizes, embeddings, pads):
+        """
+        :param embedding_sizes: {"feat name": embed_size, ...}
+        :param vocab_sizes: {"feat name": vocab_size, ...}
+        :param pads: {"feat name": pad (0/V/..)}
+        :param embeddings: {"feat name": tf.nn.embedding operation}
+
+        """
         super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)
 
     def encode(self, embed_inputs, dropouts = None):
+        """
+        an operation that concatenates all the embedded vectors after dropout
+
+        :param embed_inputs: {"feat name":tf.placeholder(x1)], should be of type tf.int32
+        :param dropouts: {"feat name": tf.placeholder(float), ..}
+        :return: tf node
+        """
         embedded_before_concat = []
         for feature in self.embeddings.keys():
             masked_embedded = layers.lookup_and_mask(embed_inputs[feature], self.embeddings[feature], self.pads[feature], feature)
@@ -57,11 +70,10 @@ class AvgWord2Vec(Encoder):
 class CNNEncoder(Encoder):
     def __init__(self, embedding_sizes, vocab_sizes, embeddings, pads, widths, out_channels = 25):
         """
-
-        :param embedding_size:
-        :param vocab_sizes:
-        :param embeddings:
-        :param pads:
+        :param embedding_sizes: {"feat name": embed_size, ...}
+        :param vocab_sizes: {"feat name": vocab_size, ...}
+        :param pads: {"feat name": pad (0/V/..)}
+        :param embeddings: {"feat name": tf.nn.embedding operation}
         :param widths: a list of int for the width of filters, e.g. [3,4,5]
         """
         self.widths = widths
@@ -71,7 +83,7 @@ class CNNEncoder(Encoder):
     def encode(self, embed_inputs, dropouts):
         pooled_before_concat = []
         for feature in self.embeddings.keys():
-            conv_x = layers.convolution(embed_inputs[feature], self.embeddings[feature], self.embedding_sizes[feature], self.widths, self.out_channels, name = feature)
+            conv_x = layers.convolution(embed_inputs[feature], self.embeddings[feature], self.embedding_sizes[feature], self.widths, self.out_channels, self.pads[feature],name = feature)
             conv_x_dropout = tf.nn.dropout(conv_x, dropouts[feature])
             pooled_before_concat.append(conv_x_dropout)
         concat_after_conv = tf.concat(pooled_before_concat, 1, name = "concat_after_conv")

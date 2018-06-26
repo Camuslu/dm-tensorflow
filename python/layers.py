@@ -33,20 +33,34 @@ def fully_connected(input, input_size, output_size, const=0.0, name=""):
         layer = tf.nn.xw_plus_b(input, W, b, name = name)
     return layer
 
-# TODO allow other initalizer here (random, uniform, etc)
-def embedding(vocab_size, embedding_size, name="", pretrained=None):
+
+def embedding(vocab_size, embedding_size, name="", pretrained=None, init = "normal"):
     embeddings = None
-    with tf.name_scope(name):
+    with tf.name_scope("embeddings"):
         if pretrained is not None:
             embeddings = tf.get_variable(name="Ww-%s" % name, shape=pretrained.shape,
                                          initializer=tf.constant_initializer(pretrained),
                                          trainable=True)
-        else:
+        elif init == "normal":
             embeddings = tf.get_variable(name="Ww-%s" % name,
                                          trainable=True,
                                          dtype=tf.float32,
                                          initializer=init_ops.VarianceScaling(mode='fan_out'),
                                          shape=[vocab_size, embedding_size])
+        elif init == "uniform":
+            embeddings = tf.get_variable(name="Ww-%s" % name,
+                                         trainable=True,
+                                         dtype=tf.float32,
+                                         initializer=init_ops.random_uniform_initializer(minval = -1/vocab_size, maxval = 1/vocab_size),
+                                         shape=[vocab_size, embedding_size])
+        elif init == "xavier":
+            embeddings = tf.get_variable(name="Ww-%s" % name,
+                                         trainable=True,
+                                         dtype=tf.float32,
+                                         initializer=init_ops.glorot_uniform_initializer(),
+                                         shape=[vocab_size, embedding_size])
+        else:
+            raise Exception("embedding initialize: %s is either pretrained, or initialized from {normal, uniform, xavier}" %(name))
 
     return embeddings
 
@@ -67,9 +81,12 @@ def avg_w2v(input, embedded, pad = 0, name = ""):
     return avg_embedding
 
 
-def convolution(input, embedding, dim, widths, out_channels, name=''):
+def convolution(input, embedding, dim, widths, out_channels, pad, name=''):
     """
     https://arxiv.org/pdf/1510.03820.pdf has a nice visualization
+
+    Assume input is [batchsize, seq_len]
+    Embedd
 
     :param input: tf.placeholder,
     :param embedding: tf embedding matrix
@@ -82,12 +99,15 @@ def convolution(input, embedding, dim, widths, out_channels, name=''):
     output = []
     seq_len = tf.shape(input)[1]
     for width in widths:
-        vectors = tf.nn.embedding_lookup(embedding, input)
+        embedded = tf.nn.embedding_lookup(embedding, input)
+        pad_mask = tf.expand_dims(tf.cast(tf.not_equal(input, pad), dtype=tf.float32), 2)
+
+        embedded_pad_masked = tf.multiply(embedded, pad_mask)
         w = tf.get_variable(name="weights-%s-%s" % (name, width), shape=[width, dim, out_channels],
                             initializer=tf.contrib.layers.xavier_initializer(), trainable=True)
         b = tf.Variable(tf.zeros(shape=[out_channels]) + 0.1)
         conv_width = seq_len - width + 1
-        conv = tf.nn.conv1d(vectors, w, 1, 'VALID') # tensor of [batchsize, out_width, out_channels]
+        conv = tf.nn.conv1d(embedded_pad_masked, w, 1, 'VALID') # tensor of [batchsize, out_width, out_channels]
         conv_bias = tf.nn.bias_add(conv, b)
         condition = tf.equal(conv, 0.0)
         epsilon = -10.0
@@ -95,9 +115,6 @@ def convolution(input, embedding, dim, widths, out_channels, name=''):
                                 tf.fill([tf.shape(input)[0], conv_width, 3], 0.0))
         conv_relu_out = tf.nn.relu(conv_bias)
         epsilon_adjusted = tf.add(epsilon_mask, conv_relu_out)
-        # pool = tf.nn.max_pool(tf.expand_dims(conv_out_relu, 2),
-        #                       ksize=[1, conv_out_relu.get_shape()[1], 1, 1], strides=[1, 1, 1, 1],
-        #                       padding='VALID')
         pool = tf.reduce_max(tf.expand_dims(epsilon_adjusted, 2), axis=1, keep_dims=True)
         output.append(pool)
     cnn_out = tf.squeeze(tf.concat(output, 3), [1, 2])
