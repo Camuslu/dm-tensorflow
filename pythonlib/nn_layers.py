@@ -77,7 +77,9 @@ def avg_w2v(input, embedded, pad = 0, name = ""):
     sum_embedding = tf.reduce_sum(embedded, 1)
     embedding_length = tf.reduce_sum(tf.cast(tf.not_equal(input, pad), dtype=tf.float32), axis=1,
                                      keep_dims=True)
-    avg_embedding = sum_embedding / embedding_length
+
+    embedding_length_smoothed = tf.where(tf.greater(embedding_length, 0.0), embedding_length, tf.ones(tf.shape(embedding_length))) # if length = 0, change it to 1 to avoid nan!
+    avg_embedding = sum_embedding / embedding_length_smoothed
     return avg_embedding
 
 
