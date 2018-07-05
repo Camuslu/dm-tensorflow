@@ -77,7 +77,7 @@ class CNNEncoder(Encoder):
         :param vocab_sizes: {"feat name": vocab_size, ...}
         :param pads: {"feat name": pad (0/V/..)}
         :param embeddings: {"feat name": tf.nn.embedding operation}
-        :param widths: a list of int for the width of filters, e.g. [3,4,5]
+        :param widths: a list of int for the width of filters, e.g. {"feat name": [3,4,5]}
         :param out_channels:
         """
         # tf.set_random_seed(54321)
@@ -88,7 +88,7 @@ class CNNEncoder(Encoder):
     def encode(self, embed_inputs, dropouts):
         pooled_before_concat = []
         for feature in self.embeddings.keys():
-            conv_x = nn_layers.convolution(embed_inputs[feature], self.embeddings[feature], self.embedding_sizes[feature], self.widths, self.out_channels, self.pads[feature], name = feature)
+            conv_x = nn_layers.convolution(embed_inputs[feature], self.embeddings[feature], self.embedding_sizes[feature], self.widths[feature], self.out_channels, self.pads[feature], name = feature)
             conv_x_dropout = tf.nn.dropout(conv_x, dropouts[feature])
             pooled_before_concat.append(conv_x_dropout)
         concat_after_conv = tf.concat(pooled_before_concat, 1, name = "concat_after_conv")
