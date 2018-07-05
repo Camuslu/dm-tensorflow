@@ -11,7 +11,7 @@ def recall(correctCount, trueCount):
     return np.round(correctCount/trueCount*100.0, 2)
 
 def f1(prec, recall):
-    if prec+recall == 0:
+    if prec ==0 and recall == 0:
         return np.nan
     return np.round(2*prec*recall/(prec+recall), 2)
 

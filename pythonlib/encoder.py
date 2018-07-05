@@ -21,6 +21,7 @@ class Encoder(object):
         :param embeddings: {"feat name": tf.nn.embedding operation}
 
         """
+        # tf.set_random_seed(54321)
         self.embedding_sizes = embedding_sizes
         self.vocab_sizes = vocab_sizes
         self.embeddings = embeddings
@@ -46,6 +47,7 @@ class AvgWord2Vec(Encoder):
         :param embeddings: {"feat name": tf.nn.embedding operation}
 
         """
+        # tf.set_random_seed(54321)
         super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)
 
     def encode(self, embed_inputs, dropouts = None):
@@ -77,6 +79,7 @@ class CNNEncoder(Encoder):
         :param embeddings: {"feat name": tf.nn.embedding operation}
         :param widths: a list of int for the width of filters, e.g. [3,4,5]
         """
+        # tf.set_random_seed(54321)
         self.widths = widths
         self.out_channels = out_channels
         super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)

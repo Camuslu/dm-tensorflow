@@ -21,7 +21,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 def fully_connected(input, input_size, output_size, const=0.0, name=""):
     with tf.name_scope("weights_biases"):
         W = tf.get_variable(name="weights-%s" % name, shape=[input_size, output_size],
-                            initializer=tf.contrib.layers.xavier_initializer(), trainable=True)
+                            initializer=tf.contrib.layers.xavier_initializer(seed = 42), trainable=True)
         tf.summary.histogram(name + "W", W)
 
         b = tf.get_variable(name="biases-%s" % name, shape=[output_size],
@@ -45,19 +45,19 @@ def embedding(vocab_size, embedding_size, name="", pretrained=None, init = "norm
             embeddings = tf.get_variable(name="Ww-%s" % name,
                                          trainable=True,
                                          dtype=tf.float32,
-                                         initializer=init_ops.VarianceScaling(mode='fan_out'),
+                                         initializer=init_ops.VarianceScaling(mode='fan_out', seed = 42),
                                          shape=[vocab_size, embedding_size])
         elif init == "uniform":
             embeddings = tf.get_variable(name="Ww-%s" % name,
                                          trainable=True,
                                          dtype=tf.float32,
-                                         initializer=init_ops.random_uniform_initializer(minval = -1/vocab_size, maxval = 1/vocab_size),
+                                         initializer=init_ops.random_uniform_initializer(minval = -1/vocab_size, maxval = 1/vocab_size, seed = 42),
                                          shape=[vocab_size, embedding_size])
         elif init == "xavier":
             embeddings = tf.get_variable(name="Ww-%s" % name,
                                          trainable=True,
                                          dtype=tf.float32,
-                                         initializer=init_ops.glorot_uniform_initializer(),
+                                         initializer=init_ops.glorot_uniform_initializer(seed = 42),
                                          shape=[vocab_size, embedding_size])
         else:
             raise Exception("embedding initialize: %s is either pretrained, or initialized from {normal, uniform, xavier}" %(name))
