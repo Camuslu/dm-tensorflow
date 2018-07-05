@@ -78,6 +78,7 @@ class CNNEncoder(Encoder):
         :param pads: {"feat name": pad (0/V/..)}
         :param embeddings: {"feat name": tf.nn.embedding operation}
         :param widths: a list of int for the width of filters, e.g. [3,4,5]
+        :param out_channels:
         """
         # tf.set_random_seed(54321)
         self.widths = widths

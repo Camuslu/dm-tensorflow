@@ -96,26 +96,23 @@ def convolution(input, embedding, dim, widths, out_channels, pad, name=''):
     :param widths: the width of filter
     :param out_channels: number of output channels after convolution
     :param name:
-    :return: tensor of shape [batchsize, out_channels]
+    :return: tensor of shape [batchsize, out_channels x len(widths) ]
     """
     output = []
     seq_len = tf.shape(input)[1]
+    embedded_pad_masked = lookup_and_mask(input, embedding, pad=pad, name=name) # [batchsize, seq_len, embed_dim]. zero-padded
     for width in widths:
-        embedded = tf.nn.embedding_lookup(embedding, input)
-        pad_mask = tf.expand_dims(tf.cast(tf.not_equal(input, pad), dtype=tf.float32), 2)
-
-        embedded_pad_masked = tf.multiply(embedded, pad_mask)
         w = tf.get_variable(name="weights-%s-%s" % (name, width), shape=[width, dim, out_channels],
-                            initializer=tf.contrib.layers.xavier_initializer(), trainable=True)
+                            initializer=tf.contrib.layers.xavier_initializer(seed = 42), trainable=True)
         b = tf.Variable(tf.zeros(shape=[out_channels]) + 0.1)
         conv_width = seq_len - width + 1
         conv = tf.nn.conv1d(embedded_pad_masked, w, 1, 'VALID') # tensor of [batchsize, out_width, out_channels]
-        conv_bias = tf.nn.bias_add(conv, b)
+        conv_biased = tf.nn.bias_add(conv, b)
         condition = tf.equal(conv, 0.0)
         epsilon = -10.0
-        epsilon_mask = tf.where(condition, tf.fill([tf.shape(input)[0], conv_width, 3], epsilon),
-                                tf.fill([tf.shape(input)[0], conv_width, 3], 0.0))
-        conv_relu_out = tf.nn.relu(conv_bias)
+        epsilon_mask = tf.where(condition, tf.fill([tf.shape(input)[0], conv_width, out_channels], epsilon),
+                                           tf.fill([tf.shape(input)[0], conv_width, out_channels], 0.0))
+        conv_relu_out = tf.nn.relu(conv_biased)
         epsilon_adjusted = tf.add(epsilon_mask, conv_relu_out)
         pool = tf.reduce_max(tf.expand_dims(epsilon_adjusted, 2), axis=1, keep_dims=True)
         output.append(pool)
