@@ -51,6 +51,7 @@ class AvgWord2Vec(Encoder):
         super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)
 
     def encode(self, embed_inputs, dropouts = None):
+        
         """
         an operation that concatenates all the embedded vectors after dropout
 
