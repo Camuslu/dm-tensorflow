@@ -66,6 +66,14 @@ def embedding(vocab_size, embedding_size, name="", pretrained=None, init = "norm
 
 
 def lookup_and_mask(input, embedding, pad = 0, name = "", dim = 2):
+    """
+    :param input:  Tensor of any shape, usually 2D [batch_size, length]
+    :param embedding: 2D tensor embedding
+    :param pad: the pad that will be embedded to [0.0,...0.0]. If input is padded as [a,b,c,x,x,x], set pad = x
+    :param name:
+    :param dim:
+    :return: 
+    """
     embeddings = tf.nn.embedding_lookup(embedding, input)
     pad_mask = tf.expand_dims(tf.cast(tf.not_equal(input, pad), dtype=tf.float32), dim = dim)
     with tf.name_scope ("masked_embedding"):
