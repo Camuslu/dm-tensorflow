@@ -8,12 +8,15 @@ from six.moves import urllib
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import seq2seq
+# from tensorflow.contrib import rnn
 from tensorflow.python.ops import init_ops
 import math
 from tensorflow.contrib.rnn import DropoutWrapper
 from tensorflow.contrib.rnn import GRUCell
-from tensorflow.contrib.rnn import LSTMCell
-from tensorflow.python.ops import embedding_ops
+from tensorflow.contrib.rnn import BasicLSTMCell
+from tensorflow.contrib.rnn import DropoutWrapper
+
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -72,7 +75,7 @@ def lookup_and_mask(input, embedding, pad = 0, name = "", dim = 2):
     :param pad: the pad that will be embedded to [0.0,...0.0]. If input is padded as [a,b,c,x,x,x], set pad = x
     :param name:
     :param dim:
-    :return: 
+    :return:
     """
     embeddings = tf.nn.embedding_lookup(embedding, input)
     pad_mask = tf.expand_dims(tf.cast(tf.not_equal(input, pad), dtype=tf.float32), dim = dim)
@@ -128,38 +131,23 @@ def convolution(input, embedding, dim, widths, out_channels, pad, name=''):
     return cnn_out
 
 
-def rnn(w: tf.Variable, hidden_size, text_placeholder: tf.Variable, vocab_size: int,
-        testing_mode: tf.Variable, cell_type: str) -> tf.Variable:
-    with tf.variable_scope('rnn'):
-        weights = tf.cast(tf.not_equal(text_placeholder, vocab_size-1), dtype=tf.int32, name="weights")
-        sequence_lengths = tf.reduce_sum(weights, reduction_indices=[1])
-        embeddings = embedding_ops.embedding_lookup(w, text_placeholder,
-                                                    name="embeddings")
-        forward_cell = _get_cell_encoder(cell_type, hidden_size, testing_mode, 'forward')
-        backward_cell = _get_cell_encoder(cell_type, hidden_size, testing_mode, 'backward')
+def recurrent_operation(input, rnn_dim, embedding, cell_type, pad, dropout, name = ''):
+        masked_embedded = lookup_and_mask(input, embedding, pad, name= name) # [batch_size, seq_len, embed_dim]
+        sequence_lengths = tf.reduce_sum(tf.cast(tf.not_equal(input, pad), tf.int32), axis=1)
+        cell_with_dropout = get_cell_type(rnn_dim, cell_type, dropout)
 
-        _, (output_state_fw, output_state_bw) = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw=forward_cell,
-            cell_bw=backward_cell,
-            inputs=embeddings,
-            sequence_length=sequence_lengths,
-            dtype=tf.float32,
-            parallel_iterations=128
-        )
-        rnn_out = tf.concat([output_state_fw, output_state_bw], axis=1)
-        tf.summary.histogram('rnn_out_summary', rnn_out)
-    return rnn_out
+        rnn_output, rnn_state = tf.nn.dynamic_rnn(cell=cell_with_dropout, inputs=masked_embedded, sequence_length=sequence_lengths, dtype=tf.float32)
+        return rnn_output, rnn_state
 
 
-def _get_cell_encoder(cell_type, size, testing_mode, scope):
-    input_keep_prob = tf.cond(testing_mode, lambda: tf.constant(1.0), lambda: tf.constant(0.8))
-    output_keep_prob = tf.cond(testing_mode, lambda: tf.constant(1.0), lambda: tf.constant(0.5))
-    if cell_type == "gru":
-        cell = GRUCell(size)
-    elif cell_type == "lstm":
-        cell = LSTMCell(size)
+def get_cell_type(rnn_dim, cell_type, dropout = 0.5):
+    if cell_type == 'LSTM':
+        cell =  BasicLSTMCell(num_units=rnn_dim, name="lstmCell")
+    elif cell_type == 'GRU':
+        cell =  GRUCell(num_units=rnn_dim, name="gruCell")
     else:
-        raise Exception("Cell type {0} not found, please specify either gru or lstm.".format(cell_type))
-    return DropoutWrapper(cell, input_keep_prob=input_keep_prob, output_keep_prob=output_keep_prob)
+        print("specify encoder cell type in {LSTM, GRU}")
+    cell_with_dropout = DropoutWrapper(cell, input_keep_prob =  1 - dropout)
+
 
 

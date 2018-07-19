@@ -8,6 +8,7 @@ sys.path.append('../dm-tensorflow/')
 
 import numpy as np
 import tensorflow as tf
+
 import nn_layers
 
 class Encoder(object):
@@ -87,6 +88,12 @@ class CNNEncoder(Encoder):
         super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)
 
     def encode(self, embed_inputs, dropouts):
+        """
+
+        :param embed_inputs: {"feat name":tf.placeholder(x1)], should be of type tf.int32
+        :param dropouts: {"feat name": tf.placeholder(float), ..}
+        :return:
+        """
         pooled_before_concat = []
         for feature in self.embeddings.keys():
             conv_x = nn_layers.convolution(embed_inputs[feature], self.embeddings[feature], self.embedding_sizes[feature], self.widths[feature], self.out_channels, self.pads[feature], name = feature)
@@ -94,4 +101,35 @@ class CNNEncoder(Encoder):
             pooled_before_concat.append(conv_x_dropout)
         concat_after_conv = tf.concat(pooled_before_concat, 1, name = "concat_after_conv")
         return concat_after_conv
+
+
+class RNNEncoder(Encoder):
+    def __init__(self, embedding_sizes, vocab_sizes, embeddings, pads, rnn_dims, cell_type):
+        """
+
+        :param embedding_sizes: {"feat name": embed_size, ...}
+        :param vocab_sizes: {"feat name": vocab_size, ...}
+        :param pads: {"feat name": pad (0/V/..)}
+        :param embeddings: {"feat name": tf.nn.embedding operation}
+        :param rnn_dims: {"feat name": v = 32 = rnn_dim for feat , ...}
+        :param cell_type: "LSTM"/"GRU"
+        """
+        self.rnn_dims = rnn_dims
+        self.cell_type = cell_type
+        super().__init__(embedding_sizes, vocab_sizes, embeddings, pads)
+
+    def encode(self, embed_inputs, dropouts):
+        """
+
+        :param embed_inputs: {"feat name":tf.placeholder(x1)], should be of type tf.int32
+        :param dropouts: {"feat name": tf.placeholder(float), ..}
+        :return:
+        """
+        rnn_states = []
+        for feature in self.embeddings.keys():
+            _, rnn_state_x = nn_layers.recurrent_operation(embed_inputs[feature], self.rnn_dims[feature], self.embeddings[feature], self.cell_type, self.pads[feature], dropouts[feature], name = feature)
+            rnn_states.append(rnn_state_x)
+        encoder_output = tf.concat(rnn_states, axis = 1, anme = "concat_after_rnn")
+        return encoder_output
+
 
