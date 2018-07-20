@@ -127,7 +127,8 @@ class RNNEncoder(Encoder):
         """
         rnn_states = []
         for feature in self.embeddings.keys():
-            _, rnn_state_x = nn_layers.recurrent_operation(embed_inputs[feature], self.rnn_dims[feature], self.embeddings[feature], self.cell_type, self.pads[feature], dropouts[feature], name = feature)
+            _, rnn_state_x = nn_layers.recurrent_operation(embed_inputs[feature], self.rnn_dims[feature], self.embeddings[feature], self.cell_type, self.pads[feature],
+                                                           input_dropout = dropouts[feature], output_dropout = dropouts[feature], state_dropout = dropouts[feature], name = feature)
             rnn_states.append(rnn_state_x)
         encoder_output = tf.concat(rnn_states, axis = 1, anme = "concat_after_rnn")
         return encoder_output

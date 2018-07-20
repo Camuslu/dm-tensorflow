@@ -131,23 +131,24 @@ def convolution(input, embedding, dim, widths, out_channels, pad, name=''):
     return cnn_out
 
 
-def recurrent_operation(input, rnn_dim, embedding, cell_type, pad, dropout, name = ''):
+def recurrent_operation(input, rnn_dim, embedding, cell_type, pad, input_dropout = 0.5, output_dropout = 0.5, state_dropout = 0.5, name = ''):
         masked_embedded = lookup_and_mask(input, embedding, pad, name= name) # [batch_size, seq_len, embed_dim]
         sequence_lengths = tf.reduce_sum(tf.cast(tf.not_equal(input, pad), tf.int32), axis=1)
-        cell_with_dropout = get_cell_type(rnn_dim, cell_type, dropout)
+        cell_with_dropout = get_cell_type(rnn_dim, cell_type, input_dropout, output_dropout, state_dropout)
 
         rnn_output, rnn_state = tf.nn.dynamic_rnn(cell=cell_with_dropout, inputs=masked_embedded, sequence_length=sequence_lengths, dtype=tf.float32)
         return rnn_output, rnn_state
 
 
-def get_cell_type(rnn_dim, cell_type, dropout = 0.5):
+def get_cell_type(rnn_dim, cell_type, input_dropout, output_dropout, state_dropout):
     if cell_type == 'LSTM':
         cell =  BasicLSTMCell(num_units=rnn_dim, name="lstmCell")
     elif cell_type == 'GRU':
         cell =  GRUCell(num_units=rnn_dim, name="gruCell")
     else:
         print("specify encoder cell type in {LSTM, GRU}")
-    cell_with_dropout = DropoutWrapper(cell, input_keep_prob =  1 - dropout)
+    cell_with_dropout = DropoutWrapper(cell, input_keep_prob =  1 - input_dropout, output_keep_prob= 1- output_dropout, state_keep_prob= 1- state_dropout )
+    return cell_with_dropout
 
 
 
