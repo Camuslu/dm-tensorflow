@@ -20,17 +20,12 @@ def document_iterator(file, query_keys = [], fns = []):
     :return: iterator that yields tuple of (fn1(file), fn2(file),...)
 
     """
-    # with open(classes) as cl:
-    #     class_list = []
-    #     for klass in cl:
-    #         class_list.append(klass.rstrip())
-
     with open(file) as f:
         for line in f:
             js = json.loads(line)
             for key in query_keys:
                 js = js[key]
-            yield [list(fn(js)) for fn in fns] #if fn returns nparray, convert it to list
+            yield [list(fn(js)) for fn in fns] #if fn returns np.array, convert it to list
 
 
 def grouper(n, iterable):
@@ -62,7 +57,6 @@ class BatchIterator:
     def get(self):
         for el in grouper(self.batchsize, self.iterator):
             bsize = len(el)
-            # print("bsize", bsize)
 
             seq_lengths = [0] * self.num_feat # for current batch, the seq length for each feature that need padding
             #el is [tuple_1, tuple_2, ...tuple_bsize]
@@ -75,8 +69,6 @@ class BatchIterator:
                 for (idx2, feat) in enumerate(feat_tuple):
                     iter_result[idx2][idx1] = feat
                     seq_lengths[idx2] = max(seq_lengths[idx2], len(feat))
-            # print("1 batch before padding")
-            # print("seq lengths", seq_lengths)
 
             # Then do padding based on updated seq_lengths
             for (idx2, batched_feat) in enumerate(iter_result):
